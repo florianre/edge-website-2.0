@@ -1,0 +1,20 @@
+[
+  {
+    "membershipNumber" : "1001",
+    "name" : "Alex Carter",
+    "role" : "member",
+    "status" : "active"
+  },
+  {
+    "membershipNumber" : "1002",
+    "name" : "Priya Shah",
+    "role" : "coach",
+    "status" : "active"
+  },
+  {
+    "membershipNumber" : "1003",
+    "name" : "Sam Edwards",
+    "role" : "committee",
+    "status" : "inactive"
+  }
+]
