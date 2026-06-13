@@ -1,0 +1,244 @@
+openapi: 3.0.3
+info:
+  title: Edge Website 2.0 Membership API
+  version: 0.1.0
+  description: >
+    First implementation slice for the club website. This API currently supports
+    file-backed membership management only.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/memberships:
+    get:
+      summary: List or filter memberships
+      description: Returns all memberships or a filtered list when optional query parameters are supplied.
+      parameters:
+        - in: query
+          name: membershipNumber
+          schema:
+            type: string
+          required: false
+          description: Exact membership-number filter.
+        - in: query
+          name: name
+          schema:
+            type: string
+          required: false
+          description: Case-insensitive partial-name filter.
+        - in: query
+          name: role
+          schema:
+            $ref: "#/components/schemas/MembershipRole"
+          required: false
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/MembershipStatus"
+          required: false
+      responses:
+        "200":
+          description: Matching memberships
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Membership"
+        "400":
+          description: Invalid query parameter value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a membership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMembershipRequest"
+      responses:
+        "201":
+          description: Created membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate membership number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/memberships/{membershipNumber}:
+    get:
+      summary: Fetch a membership by ID
+      parameters:
+        - $ref: "#/components/parameters/MembershipNumber"
+      responses:
+        "200":
+          description: Matching membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "404":
+          description: Membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      summary: Update name and role for a membership
+      parameters:
+        - $ref: "#/components/parameters/MembershipNumber"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMembershipRequest"
+      responses:
+        "200":
+          description: Updated membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      summary: Delete a membership
+      parameters:
+        - $ref: "#/components/parameters/MembershipNumber"
+      responses:
+        "204":
+          description: Membership deleted
+        "404":
+          description: Membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/memberships/{membershipNumber}/activate:
+    patch:
+      summary: Activate a membership
+      parameters:
+        - $ref: "#/components/parameters/MembershipNumber"
+      responses:
+        "200":
+          description: Activated membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "404":
+          description: Membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/memberships/{membershipNumber}/deactivate:
+    patch:
+      summary: Deactivate a membership
+      parameters:
+        - $ref: "#/components/parameters/MembershipNumber"
+      responses:
+        "200":
+          description: Deactivated membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "404":
+          description: Membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    MembershipNumber:
+      in: path
+      name: membershipNumber
+      required: true
+      schema:
+        type: string
+  schemas:
+    Membership:
+      type: object
+      required:
+        - membershipNumber
+        - name
+        - role
+        - status
+      properties:
+        membershipNumber:
+          type: string
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+        status:
+          $ref: "#/components/schemas/MembershipStatus"
+    CreateMembershipRequest:
+      type: object
+      required:
+        - membershipNumber
+        - name
+        - role
+      properties:
+        membershipNumber:
+          type: string
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+        status:
+          $ref: "#/components/schemas/MembershipStatus"
+          default: active
+    UpdateMembershipRequest:
+      type: object
+      required:
+        - name
+        - role
+      properties:
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+    MembershipRole:
+      type: string
+      enum:
+        - member
+        - coach
+        - committee
+    MembershipStatus:
+      type: string
+      enum:
+        - active
+        - inactive
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string

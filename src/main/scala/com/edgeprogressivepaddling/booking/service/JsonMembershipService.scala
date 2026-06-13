@@ -23,6 +23,8 @@ final class JsonMembershipService private (
     writeGuard: Semaphore[IO]
 ) extends MembershipService[IO]:
 
+  // Reads come from an in-memory Ref so we avoid reloading and decoding the whole JSON file
+  // on every request. That keeps the API responsive while still persisting each mutation.
   override def search(criteria: MembershipSearchCriteria): IO[List[Membership]] =
     state.get.map(
       _.filter(matches(criteria))
@@ -102,6 +104,8 @@ final class JsonMembershipService private (
           Right((current.updated(index, updated), updated))
     }
 
+  // Collection filters use AND semantics so callers can combine optional query parameters
+  // without the route having to define separate endpoints for each combination.
   private def matches(criteria: MembershipSearchCriteria)(membership: Membership): Boolean =
     val membershipNumberMatches = criteria.membershipNumber.forall(value =>
       membership.membershipNumber == sanitizeMembershipNumber(value)
@@ -117,6 +121,8 @@ final class JsonMembershipService private (
   private def mutate[A](
       transform: Vector[Membership] => Either[MembershipError, (Vector[Membership], A)]
   ): IO[Either[MembershipError, A]] =
+    // Writes are serialized with a semaphore because the JSON file is rewritten as a whole.
+    // Without this guard, concurrent mutations could interleave and lose updates.
     writeGuard.permit.use { _ =>
       for
         current <- state.get
@@ -173,6 +179,8 @@ object JsonMembershipService:
   def create(filePath: Path): IO[JsonMembershipService] =
     for
       memberships <- loadMemberships(filePath)
+      // The Ref becomes the in-process source of truth after startup. Persisted writes keep
+      // disk and memory aligned while avoiding repeated file IO for every read.
       state <- Ref.of[IO, Vector[Membership]](memberships)
       writeGuard <- Semaphore[IO](1)
     yield JsonMembershipService(filePath, state, writeGuard)

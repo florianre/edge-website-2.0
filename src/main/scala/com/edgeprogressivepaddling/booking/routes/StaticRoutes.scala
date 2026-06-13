@@ -15,4 +15,7 @@ final class StaticRoutes:
 
     case request @ GET -> Root / "styles.css" =>
       StaticFile.fromResource("/public/styles.css", Some(request)).getOrElseF(NotFound())
+
+    case request @ GET -> Root / "openapi.yaml" =>
+      StaticFile.fromResource("/openapi.yaml", Some(request)).getOrElseF(NotFound())
   }

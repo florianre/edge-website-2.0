@@ -20,6 +20,8 @@ final class MembershipRoutes(service: MembershipService[IO]):
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
     case request @ GET -> Root / "memberships" => {
+      // Query parameters are optional and return a list so the collection endpoint can cover
+      // both "fetch all" and filtered search without multiplying route shapes.
       buildSearchCriteria(request.params) match
         case Left(error)     => BadRequest(errorBody(error))
         case Right(criteria) => service.search(criteria).flatMap(Ok(_))
@@ -78,6 +80,8 @@ final class MembershipRoutes(service: MembershipService[IO]):
   private def errorBody(message: String): Map[String, String] =
     Map("error" -> message)
 
+  // The service deals with typed search criteria; the route owns parsing and validating
+  // raw query strings into domain values.
   private def buildSearchCriteria(
       params: Map[String, String]
   ): Either[String, MembershipSearchCriteria] =
