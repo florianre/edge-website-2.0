@@ -9,11 +9,25 @@ import java.nio.charset.StandardCharsets
 import scala.io.Source
 import scala.util.Using
 
-final case class AppConfig(server: ServerConfig, membership: MembershipConfig) derives Decoder
+final case class AppConfig(
+    server: ServerConfig,
+    membership: MembershipConfig,
+    committee: CommitteeConfig,
+    database: DatabaseConfig
+) derives Decoder
 
 final case class ServerConfig(host: String, port: Int) derives Decoder
 
 final case class MembershipConfig(file: String) derives Decoder
+
+final case class CommitteeConfig(password: String) derives Decoder
+
+final case class DatabaseConfig(
+    url: String,
+    driver: String,
+    user: String,
+    password: String
+) derives Decoder
 
 object AppConfig:
 

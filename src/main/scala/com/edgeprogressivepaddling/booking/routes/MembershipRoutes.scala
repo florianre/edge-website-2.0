@@ -1,14 +1,17 @@
 package com.edgeprogressivepaddling.booking.routes
 
 import cats.effect.IO
+import com.edgeprogressivepaddling.booking.auth.SessionCookieSupport
+import com.edgeprogressivepaddling.booking.domain.AuthenticatedSession
 import com.edgeprogressivepaddling.booking.domain.{
   CreateMembershipRequest,
   MembershipRole,
   MembershipStatus,
   UpdateMembershipRequest
 }
-import com.edgeprogressivepaddling.booking.service.{MembershipError, MembershipSearchCriteria, MembershipService}
+import com.edgeprogressivepaddling.booking.service.{AuthError, MembershipError, MembershipSearchCriteria, MembershipService}
 import org.http4s.HttpRoutes
+import org.http4s.{Response, Status}
 import org.http4s.circe.{CirceEntityCodec, jsonOf}
 import org.http4s.dsl.io.*
 
@@ -19,54 +22,66 @@ final class MembershipRoutes(service: MembershipService[IO]):
   given org.http4s.EntityDecoder[IO, UpdateMembershipRequest] = jsonOf[IO, UpdateMembershipRequest]
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
-    case request @ GET -> Root / "memberships" => {
-      // Query parameters are optional and return a list so the collection endpoint can cover
-      // both "fetch all" and filtered search without multiplying route shapes.
-      buildSearchCriteria(request.params) match
-        case Left(error)     => BadRequest(errorBody(error))
-        case Right(criteria) => service.search(criteria).flatMap(Ok(_))
+    case request @ GET -> Root => {
+      requireCoachOrCommittee(request) {
+        buildSearchCriteria(request.params) match
+          case Left(error)     => BadRequest(errorBody(error))
+          case Right(criteria) => service.search(criteria).flatMap(Ok(_))
+      }
     }
 
-    case GET -> Root / "memberships" / membershipNumber =>
-      service.getByMembershipNumber(membershipNumber).flatMap {
-        case Some(membership) => Ok(membership)
-        case None             => NotFound(errorBody(s"Membership $membershipNumber was not found"))
+    case request @ GET -> Root / membershipNumber =>
+      requireCoachOrCommittee(request) {
+        service.getByMembershipNumber(membershipNumber).flatMap {
+          case Some(membership) => Ok(membership)
+          case None             => NotFound(errorBody(s"Membership $membershipNumber was not found"))
+        }
       }
 
-    case request @ POST -> Root / "memberships" =>
-      for
-        payload <- request.as[CreateMembershipRequest]
-        response <- service.create(payload).flatMap {
-          case Right(membership) => Created(membership)
-          case Left(error)       => toResponse(error)
-        }
-      yield response
+    case request @ POST -> Root =>
+      requireCommitteeVerified(request) {
+        for
+          payload <- request.as[CreateMembershipRequest]
+          response <- service.create(payload).flatMap {
+            case Right(membership) => Created(membership)
+            case Left(error)       => toResponse(error)
+          }
+        yield response
+      }
 
-    case request @ PUT -> Root / "memberships" / membershipNumber =>
-      for
-        payload <- request.as[UpdateMembershipRequest]
-        response <- service.update(membershipNumber, payload).flatMap {
+    case request @ PUT -> Root / membershipNumber =>
+      requireCommitteeVerified(request) {
+        for
+          payload <- request.as[UpdateMembershipRequest]
+          response <- service.update(membershipNumber, payload).flatMap {
+            case Right(membership) => Ok(membership)
+            case Left(error)       => toResponse(error)
+          }
+        yield response
+      }
+
+    case request @ DELETE -> Root / membershipNumber =>
+      requireCommitteeVerified(request) {
+        service.delete(membershipNumber).flatMap {
+          case Right(_)    => NoContent()
+          case Left(error) => toResponse(error)
+        }
+      }
+
+    case request @ PATCH -> Root / membershipNumber / "activate" =>
+      requireCommitteeVerified(request) {
+        service.activate(membershipNumber).flatMap {
           case Right(membership) => Ok(membership)
           case Left(error)       => toResponse(error)
         }
-      yield response
-
-    case DELETE -> Root / "memberships" / membershipNumber =>
-      service.delete(membershipNumber).flatMap {
-        case Right(_)    => NoContent()
-        case Left(error) => toResponse(error)
       }
 
-    case PATCH -> Root / "memberships" / membershipNumber / "activate" =>
-      service.activate(membershipNumber).flatMap {
-        case Right(membership) => Ok(membership)
-        case Left(error)       => toResponse(error)
-      }
-
-    case PATCH -> Root / "memberships" / membershipNumber / "deactivate" =>
-      service.deactivate(membershipNumber).flatMap {
-        case Right(membership) => Ok(membership)
-        case Left(error)       => toResponse(error)
+    case request @ PATCH -> Root / membershipNumber / "deactivate" =>
+      requireCommitteeVerified(request) {
+        service.deactivate(membershipNumber).flatMap {
+          case Right(membership) => Ok(membership)
+          case Left(error)       => toResponse(error)
+        }
       }
   }
 
@@ -79,6 +94,29 @@ final class MembershipRoutes(service: MembershipService[IO]):
 
   private def errorBody(message: String): Map[String, String] =
     Map("error" -> message)
+
+  private def requireCoachOrCommittee(request: org.http4s.Request[IO])(onAuthorized: => IO[org.http4s.Response[IO]]) =
+    sessionFromRequest(request) match
+      case None => unauthorized(AuthError.LoginRequired.message)
+      case Some(session) if session.role == MembershipRole.Coach || session.role == MembershipRole.Committee =>
+        onAuthorized
+      case Some(_) =>
+        Forbidden(errorBody(AuthError.CoachOrCommitteeRequired.message))
+
+  private def requireCommitteeVerified(request: org.http4s.Request[IO])(onAuthorized: => IO[org.http4s.Response[IO]]) =
+    sessionFromRequest(request) match
+      case None => unauthorized(AuthError.LoginRequired.message)
+      case Some(session) if session.role != MembershipRole.Committee =>
+        Forbidden(errorBody(AuthError.CommitteeRoleRequired.message))
+      case Some(session) if !session.committeeVerified =>
+        Forbidden(errorBody(AuthError.CommitteeVerificationRequired.message))
+      case Some(_) => onAuthorized
+
+  private def sessionFromRequest(request: org.http4s.Request[IO]): Option[AuthenticatedSession] =
+    SessionCookieSupport.sessionFromRequest(request)
+
+  private def unauthorized(message: String): IO[Response[IO]] =
+    IO.pure(Response[IO](status = Status.Unauthorized).withEntity(errorBody(message)))
 
   // The service deals with typed search criteria; the route owns parsing and validating
   // raw query strings into domain values.
