@@ -28,6 +28,10 @@ const eventsStatus = document.querySelector("#events-status");
 const upcomingTab = document.querySelector("#upcoming-tab");
 const pastTab = document.querySelector("#past-tab");
 const coachActions = document.querySelector("#coach-actions");
+const showSessionFormButton = document.querySelector("#show-session-form-button");
+const showTripFormButton = document.querySelector("#show-trip-form-button");
+const createSessionShell = document.querySelector("#create-session-shell");
+const createTripShell = document.querySelector("#create-trip-shell");
 const createSessionForm = document.querySelector("#create-session-form");
 const createTripForm = document.querySelector("#create-trip-form");
 const eventsGrid = document.querySelector("#events-grid");
@@ -68,6 +72,8 @@ const setStatus = (node, message, tone = "neutral") => {
   node.textContent = message;
   node.dataset.tone = tone;
 };
+
+const getSelectedEventId = () => state.selectedEvent?.event?.id ?? null;
 
 const isCoachOrCommittee = () =>
   state.currentUser &&
@@ -202,7 +208,8 @@ const renderEvents = () => {
 };
 
 const renderEventDetail = () => {
-  if (!state.selectedEvent) {
+  if (!state.selectedEvent?.event) {
+    state.selectedEvent = null;
     eventDetailPanel.classList.add("hidden");
     return;
   }
@@ -277,7 +284,10 @@ const renderEventDetail = () => {
                   : ""
               }
             `
-            : `<p class="muted-copy">Log in with your membership number to book onto this event.</p>`
+            : `<p class="muted-copy">
+                 Log in with your membership number to book onto this event.
+                 <button id="event-login-link" class="inline-link-button" type="button">Go to Login</button>
+               </p>`
         }
         ${
           isCoachOrCommittee()
@@ -368,6 +378,9 @@ const renderEventDetail = () => {
   if (editEventForm) {
     editEventForm.addEventListener("submit", handleEditEvent);
   }
+  document.querySelector("#event-login-link")?.addEventListener("click", () => {
+    setView("login");
+  });
   eventDetailBody.querySelectorAll("[data-payment-received-membership-number]").forEach((button) => {
     button.addEventListener("click", handleTogglePaymentReceived);
   });
@@ -386,10 +399,21 @@ const loadSession = async () => {
   renderSession();
 };
 
-const loadEvents = async () => {
+const loadEvents = async ({ clearSelection = false } = {}) => {
+  if (clearSelection) {
+    state.selectedEvent = null;
+    renderEventDetail();
+  }
+
   state.events = await requestJson(`${api.events}?scope=${state.eventScope}`, {
     headers: {},
   });
+
+  if (getSelectedEventId() && !state.events.some((event) => event.id === getSelectedEventId())) {
+    state.selectedEvent = null;
+    renderEventDetail();
+  }
+
   renderEvents();
 };
 
@@ -429,6 +453,22 @@ const resetMembershipEdit = () => {
   editMembershipNumberInput.value = "";
   editNameInput.value = "";
   editRoleInput.value = "member";
+};
+
+const toggleCreatePanel = (panelName) => {
+  const openSession = panelName === "session" && createSessionShell.classList.contains("hidden");
+  const openTrip = panelName === "trip" && createTripShell.classList.contains("hidden");
+
+  createSessionShell.classList.add("hidden");
+  createTripShell.classList.add("hidden");
+
+  if (openSession) {
+    createSessionShell.classList.remove("hidden");
+  }
+
+  if (openTrip) {
+    createTripShell.classList.remove("hidden");
+  }
 };
 
 const handleLogin = async (event) => {
@@ -502,6 +542,7 @@ const handleCreateSession = async (event) => {
       }),
     });
     createSessionForm.reset();
+    createSessionShell.classList.add("hidden");
     setStatus(eventsStatus, "Session created.", "success");
     await loadEvents();
   } catch (error) {
@@ -524,6 +565,7 @@ const handleCreateTrip = async (event) => {
       }),
     });
     createTripForm.reset();
+    createTripShell.classList.add("hidden");
     setStatus(eventsStatus, "Trip created.", "success");
     await loadEvents();
   } catch (error) {
@@ -532,16 +574,17 @@ const handleCreateTrip = async (event) => {
 };
 
 const handleBookingSubmit = async () => {
-  if (!state.selectedEvent) return;
+  const eventId = getSelectedEventId();
+  if (!eventId) return;
 
   try {
-    await requestJson(`${api.events}/${state.selectedEvent.event.id}/bookings`, {
+    await requestJson(`${api.events}/${eventId}/bookings`, {
       method: "POST",
       body: JSON.stringify({
         note: document.querySelector("#booking-note")?.value || null,
       }),
     });
-    await loadEventDetail(state.selectedEvent.event.id);
+    await loadEventDetail(eventId);
     await loadEvents();
     setStatus(eventsStatus, "Booking saved.", "success");
   } catch (error) {
@@ -550,14 +593,15 @@ const handleBookingSubmit = async () => {
 };
 
 const handleRemoveBooking = async () => {
-  if (!state.selectedEvent || !state.currentUser) return;
+  const eventId = getSelectedEventId();
+  if (!eventId || !state.currentUser) return;
 
   try {
     await requestJson(
-      `${api.events}/${state.selectedEvent.event.id}/bookings/${state.currentUser.membershipNumber}`,
+      `${api.events}/${eventId}/bookings/${state.currentUser.membershipNumber}`,
       { method: "DELETE" }
     );
-    await loadEventDetail(state.selectedEvent.event.id);
+    await loadEventDetail(eventId);
     await loadEvents();
     setStatus(eventsStatus, "Booking removed.", "success");
   } catch (error) {
@@ -566,20 +610,22 @@ const handleRemoveBooking = async () => {
 };
 
 const handleTogglePaymentSent = async () => {
-  if (!state.selectedEvent || !state.currentUser) return;
+  const eventId = getSelectedEventId();
+  if (!eventId || !state.currentUser) return;
 
   const currentBooking = state.selectedEvent.currentUserBooking;
   if (!currentBooking) return;
 
   try {
     await requestJson(
-      `${api.events}/${state.selectedEvent.event.id}/bookings/${state.currentUser.membershipNumber}/payment-sent`,
+      `${api.events}/${eventId}/bookings/${state.currentUser.membershipNumber}/payment-sent`,
       {
         method: "PATCH",
         body: JSON.stringify({ sent: !currentBooking.paymentSent }),
       }
     );
-    await loadEventDetail(state.selectedEvent.event.id);
+    await loadEventDetail(eventId);
+    await loadEvents();
     setStatus(eventsStatus, "Trip payment state updated.", "success");
   } catch (error) {
     setStatus(eventsStatus, error.message, "error");
@@ -587,14 +633,15 @@ const handleTogglePaymentSent = async () => {
 };
 
 const handleCancelEvent = async () => {
-  if (!state.selectedEvent) return;
+  const eventId = getSelectedEventId();
+  if (!eventId) return;
 
   try {
-    await requestJson(`${api.events}/${state.selectedEvent.event.id}/cancel`, {
+    await requestJson(`${api.events}/${eventId}/cancel`, {
       method: "PATCH",
       headers: {},
     });
-    await loadEventDetail(state.selectedEvent.event.id);
+    await loadEventDetail(eventId);
     await loadEvents();
     setStatus(eventsStatus, "Event cancelled.", "success");
   } catch (error) {
@@ -604,12 +651,13 @@ const handleCancelEvent = async () => {
 
 const handleEditEvent = async (event) => {
   event.preventDefault();
-  if (!state.selectedEvent) return;
+  const eventId = getSelectedEventId();
+  if (!eventId) return;
 
   const form = event.currentTarget;
 
   try {
-    await requestJson(`${api.events}/${state.selectedEvent.event.id}`, {
+    await requestJson(`${api.events}/${eventId}`, {
       method: "PUT",
       body: JSON.stringify({
         title: form.title.value,
@@ -626,7 +674,7 @@ const handleEditEvent = async (event) => {
         extraInfo: form.extraInfo.value || null,
       }),
     });
-    await loadEventDetail(state.selectedEvent.event.id);
+    await loadEventDetail(eventId);
     await loadEvents();
     setStatus(eventsStatus, "Event updated.", "success");
   } catch (error) {
@@ -638,17 +686,19 @@ const handleTogglePaymentReceived = async (event) => {
   const button = event.currentTarget;
   const membershipNumber = button.dataset.paymentReceivedMembershipNumber;
   const received = button.dataset.paymentReceivedValue === "true";
-  if (!state.selectedEvent || !membershipNumber) return;
+  const eventId = getSelectedEventId();
+  if (!eventId || !membershipNumber) return;
 
   try {
     await requestJson(
-      `${api.events}/${state.selectedEvent.event.id}/bookings/${membershipNumber}/payment-received`,
+      `${api.events}/${eventId}/bookings/${membershipNumber}/payment-received`,
       {
         method: "PATCH",
         body: JSON.stringify({ received }),
       }
     );
-    await loadEventDetail(state.selectedEvent.event.id);
+    await loadEventDetail(eventId);
+    await loadEvents();
     setStatus(eventsStatus, "Trip payment receipt updated.", "success");
   } catch (error) {
     setStatus(eventsStatus, error.message, "error");
@@ -746,11 +796,17 @@ committeeForm.addEventListener("submit", handleCommitteeVerify);
 logoutButton.addEventListener("click", handleLogout);
 upcomingTab.addEventListener("click", async () => {
   state.eventScope = "upcoming";
-  await loadEvents();
+  await loadEvents({ clearSelection: true });
 });
 pastTab.addEventListener("click", async () => {
   state.eventScope = "past";
-  await loadEvents();
+  await loadEvents({ clearSelection: true });
+});
+showSessionFormButton.addEventListener("click", () => {
+  toggleCreatePanel("session");
+});
+showTripFormButton.addEventListener("click", () => {
+  toggleCreatePanel("trip");
 });
 createSessionForm.addEventListener("submit", handleCreateSession);
 createTripForm.addEventListener("submit", handleCreateTrip);

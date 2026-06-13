@@ -1,17 +1,76 @@
 openapi: 3.0.3
 info:
-  title: Edge Website 2.0 Membership API
-  version: 0.1.0
+  title: Edge Website 2.0 API
+  version: 0.2.0
   description: >
-    First implementation slice for the club website. This API currently supports
-    file-backed membership management only.
+    Prototype API for the kayaking club website. It currently supports
+    membership-number login, committee verification, membership management,
+    and event plus booking management.
 servers:
   - url: http://localhost:8080
 paths:
+  /api/auth/login:
+    post:
+      summary: Log in with a membership number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged-in session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+  /api/auth/session:
+    get:
+      summary: Get the current session
+      responses:
+        "200":
+          description: Current cookie-backed session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+  /api/auth/logout:
+    post:
+      summary: Clear the current session
+      responses:
+        "200":
+          description: Logged-out session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+  /api/auth/committee/verify:
+    post:
+      summary: Unlock committee-only functionality
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitteePasswordRequest"
+      responses:
+        "200":
+          description: Updated session with committee verification enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+
   /api/memberships:
     get:
       summary: List or filter memberships
-      description: Returns all memberships or a filtered list when optional query parameters are supplied.
       parameters:
         - in: query
           name: membershipNumber
@@ -45,11 +104,11 @@ paths:
                 items:
                   $ref: "#/components/schemas/Membership"
         "400":
-          description: Invalid query parameter value
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
     post:
       summary: Create a membership
       requestBody:
@@ -66,17 +125,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/Membership"
         "400":
-          description: Invalid payload
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
         "409":
-          description: Duplicate membership number
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error409"
   /api/memberships/{membershipNumber}:
     get:
       summary: Fetch a membership by ID
@@ -89,12 +144,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Membership"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
         "404":
-          description: Membership not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error404"
     put:
       summary: Update name and role for a membership
       parameters:
@@ -113,17 +168,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/Membership"
         "400":
-          description: Invalid payload
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
         "404":
-          description: Membership not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error404"
     delete:
       summary: Delete a membership
       parameters:
@@ -131,12 +182,12 @@ paths:
       responses:
         "204":
           description: Membership deleted
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
         "404":
-          description: Membership not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error404"
   /api/memberships/{membershipNumber}/activate:
     patch:
       summary: Activate a membership
@@ -149,12 +200,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Membership"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
         "404":
-          description: Membership not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Error404"
   /api/memberships/{membershipNumber}/deactivate:
     patch:
       summary: Deactivate a membership
@@ -167,12 +218,232 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Membership"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
         "404":
-          description: Membership not found
+          $ref: "#/components/responses/Error404"
+
+  /api/events:
+    get:
+      summary: List events by scope
+      parameters:
+        - in: query
+          name: scope
+          required: false
+          schema:
+            type: string
+            enum: [upcoming, past]
+            default: upcoming
+      responses:
+        "200":
+          description: Matching events
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+  /api/events/{id}:
+    get:
+      summary: Fetch an event with attendee and booking detail
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: Event detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+        "404":
+          $ref: "#/components/responses/Error404"
+    put:
+      summary: Update an event
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventRequest"
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+  /api/events/sessions:
+    post:
+      summary: Create a club session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionEventRequest"
+      responses:
+        "201":
+          description: Created session event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+  /api/events/trips:
+    post:
+      summary: Create a trip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTripEventRequest"
+      responses:
+        "201":
+          description: Created trip event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+  /api/events/{id}/cancel:
+    patch:
+      summary: Cancel an event
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: Cancelled event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+  /api/events/{id}/bookings:
+    post:
+      summary: Create or update the current user's booking
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "200":
+          description: Booking saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventBooking"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+  /api/events/{id}/bookings/{membershipNumber}:
+    delete:
+      summary: Remove a booking
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/MembershipNumber"
+      responses:
+        "200":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventBooking"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+  /api/events/{id}/bookings/{membershipNumber}/payment-sent:
+    patch:
+      summary: Mark trip payment sent
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/MembershipNumber"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentSentRequest"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventBooking"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+  /api/events/{id}/bookings/{membershipNumber}/payment-received:
+    patch:
+      summary: Mark trip payment received
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/MembershipNumber"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentReceivedRequest"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventBooking"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
 components:
   parameters:
     MembershipNumber:
@@ -181,7 +452,84 @@ components:
       required: true
       schema:
         type: string
+    EventId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+  responses:
+    Error400:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error401:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error403:
+      description: Authenticated but not allowed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error404:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error409:
+      description: Request conflicts with current state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    AuthenticatedSession:
+      type: object
+      required:
+        - membershipNumber
+        - name
+        - role
+        - committeeVerified
+      properties:
+        membershipNumber:
+          type: string
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+        committeeVerified:
+          type: boolean
+    SessionResponse:
+      type: object
+      required:
+        - currentUser
+      properties:
+        currentUser:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AuthenticatedSession"
+    LoginRequest:
+      type: object
+      required:
+        - membershipNumber
+      properties:
+        membershipNumber:
+          type: string
+    CommitteePasswordRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
     Membership:
       type: object
       required:
@@ -221,6 +569,239 @@ components:
           type: string
         role:
           $ref: "#/components/schemas/MembershipRole"
+    Event:
+      type: object
+      required:
+        - id
+        - eventType
+        - title
+        - eventDate
+        - maxParticipants
+        - status
+        - createdByMembershipNumber
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        eventType:
+          $ref: "#/components/schemas/EventType"
+        title:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        meetTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
+        locationType:
+          $ref: "#/components/schemas/LocationTypeNullable"
+        locationText:
+          type: string
+          nullable: true
+        destination:
+          type: string
+          nullable: true
+        tideInfo:
+          type: string
+          nullable: true
+        maxParticipants:
+          type: integer
+        description:
+          type: string
+          nullable: true
+        extraInfo:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        createdByMembershipNumber:
+          type: string
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+    CreateSessionEventRequest:
+      type: object
+      required:
+        - eventDate
+        - meetTime
+        - endTime
+        - locationType
+        - maxParticipants
+      properties:
+        eventDate:
+          type: string
+          format: date
+        meetTime:
+          type: string
+        endTime:
+          type: string
+        locationType:
+          $ref: "#/components/schemas/LocationType"
+        locationText:
+          type: string
+          nullable: true
+        destination:
+          type: string
+          nullable: true
+        tideInfo:
+          type: string
+          nullable: true
+        maxParticipants:
+          type: integer
+        extraInfo:
+          type: string
+          nullable: true
+    CreateTripEventRequest:
+      type: object
+      required:
+        - title
+        - eventDate
+        - maxParticipants
+        - description
+      properties:
+        title:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        maxParticipants:
+          type: integer
+        description:
+          type: string
+    UpdateEventRequest:
+      type: object
+      required:
+        - title
+        - eventDate
+        - maxParticipants
+      properties:
+        title:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        meetTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
+        locationType:
+          $ref: "#/components/schemas/LocationTypeNullable"
+        locationText:
+          type: string
+          nullable: true
+        destination:
+          type: string
+          nullable: true
+        tideInfo:
+          type: string
+          nullable: true
+        maxParticipants:
+          type: integer
+        description:
+          type: string
+          nullable: true
+        extraInfo:
+          type: string
+          nullable: true
+    EventBooking:
+      type: object
+      required:
+        - id
+        - eventId
+        - membershipNumber
+        - memberName
+        - bookingStatus
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        eventId:
+          type: integer
+          format: int64
+        membershipNumber:
+          type: string
+        memberName:
+          type: string
+        bookingStatus:
+          $ref: "#/components/schemas/BookingStatus"
+        note:
+          type: string
+          nullable: true
+        paymentSent:
+          type: boolean
+          nullable: true
+        paymentReceived:
+          type: boolean
+          nullable: true
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+    EventDetail:
+      type: object
+      required:
+        - event
+        - attendees
+        - spotsRemaining
+      properties:
+        event:
+          $ref: "#/components/schemas/Event"
+        attendees:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventBooking"
+        spotsRemaining:
+          type: integer
+        currentUserBooking:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/EventBooking"
+    CreateBookingRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          nullable: true
+    PaymentSentRequest:
+      type: object
+      required:
+        - sent
+      properties:
+        sent:
+          type: boolean
+    PaymentReceivedRequest:
+      type: object
+      required:
+        - received
+      properties:
+        received:
+          type: boolean
     MembershipRole:
       type: string
       enum:
@@ -232,6 +813,31 @@ components:
       enum:
         - active
         - inactive
+    EventType:
+      type: string
+      enum:
+        - session
+        - trip
+    EventStatus:
+      type: string
+      enum:
+        - active
+        - cancelled
+    LocationType:
+      type: string
+      enum:
+        - kew_bridge
+        - canal
+        - other
+    LocationTypeNullable:
+      nullable: true
+      allOf:
+        - $ref: "#/components/schemas/LocationType"
+    BookingStatus:
+      type: string
+      enum:
+        - going
+        - cancelled
     ErrorResponse:
       type: object
       required:

@@ -79,7 +79,12 @@
           <p id="events-status" class="status-message" aria-live="polite"></p>
 
           <div id="coach-actions" class="coach-actions hidden">
-            <div class="form-card">
+            <div class="coach-action-toolbar">
+              <button id="show-session-form-button" class="secondary-button" type="button">New Session</button>
+              <button id="show-trip-form-button" class="secondary-button" type="button">New Trip</button>
+            </div>
+
+            <div id="create-session-shell" class="form-card hidden">
               <p class="eyebrow">Create Session</p>
               <form id="create-session-form" class="stack-form">
                 <label>Date <input name="eventDate" type="date" required /></label>
@@ -102,7 +107,7 @@
               </form>
             </div>
 
-            <div class="form-card">
+            <div id="create-trip-shell" class="form-card hidden">
               <p class="eyebrow">Create Trip</p>
               <form id="create-trip-form" class="stack-form">
                 <label>Title <input name="title" required /></label>
