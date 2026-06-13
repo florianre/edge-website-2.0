@@ -3,23 +3,19 @@ package com.edgeprogressivepaddling.booking.config
 import cats.effect.Async
 import cats.syntax.all.*
 import io.circe.Decoder
-import io.circe.generic.semiauto.deriveDecoder
 import io.circe.yaml.parser
 
 import java.nio.charset.StandardCharsets
 import scala.io.Source
 import scala.util.Using
 
-final case class AppConfig(server: ServerConfig, membership: MembershipConfig)
+final case class AppConfig(server: ServerConfig, membership: MembershipConfig) derives Decoder
 
-final case class ServerConfig(host: String, port: Int)
+final case class ServerConfig(host: String, port: Int) derives Decoder
 
-final case class MembershipConfig(file: String)
+final case class MembershipConfig(file: String) derives Decoder
 
 object AppConfig:
-  given Decoder[AppConfig] = deriveDecoder[AppConfig]
-  given Decoder[ServerConfig] = deriveDecoder[ServerConfig]
-  given Decoder[MembershipConfig] = deriveDecoder[MembershipConfig]
 
   def load[F[_]: Async](resourceName: String = "application.yaml"): F[AppConfig] =
     for
