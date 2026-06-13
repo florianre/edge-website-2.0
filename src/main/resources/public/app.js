@@ -69,6 +69,32 @@ const renderMemberships = () => {
     .join("");
 };
 
+const isMembershipRecord = (value) =>
+  value &&
+  typeof value === "object" &&
+  typeof value.membershipNumber === "string" &&
+  typeof value.name === "string" &&
+  typeof value.role === "string" &&
+  typeof value.status === "string";
+
+const compareMemberships = (left, right) => {
+  const leftMembershipNumber = left?.membershipNumber;
+  const rightMembershipNumber = right?.membershipNumber;
+
+  if (
+    typeof leftMembershipNumber !== "string" ||
+    typeof rightMembershipNumber !== "string"
+  ) {
+    return 0;
+  }
+
+  return leftMembershipNumber.localeCompare(
+    rightMembershipNumber,
+    undefined,
+    { numeric: true }
+  );
+};
+
 const fetchMemberships = async () => {
   const response = await fetch(apiBase);
   if (!response.ok) {
@@ -80,7 +106,12 @@ const fetchMemberships = async () => {
     throw new Error("Membership list response was not an array.");
   }
 
+  if (!payload.every(isMembershipRecord)) {
+    throw new Error("Membership list response contained an invalid record.");
+  }
+
   memberships = payload;
+  memberships.sort(compareMemberships);
   renderMemberships();
 };
 
@@ -119,16 +150,16 @@ const resetEditForm = () => {
 };
 
 const upsertMembership = (membership) => {
+  if (!isMembershipRecord(membership)) {
+    throw new Error("Membership response was missing required fields.");
+  }
+
   const index = memberships.findIndex(
     (candidate) => candidate.membershipNumber === membership.membershipNumber
   );
 
   if (index === -1) {
-    memberships = [...memberships, membership].sort((left, right) =>
-      left.membershipNumber.localeCompare(right.membershipNumber, undefined, {
-        numeric: true,
-      })
-    );
+    memberships = [...memberships, membership].sort(compareMemberships);
   } else {
     memberships = memberships.map((candidate) =>
       candidate.membershipNumber === membership.membershipNumber
