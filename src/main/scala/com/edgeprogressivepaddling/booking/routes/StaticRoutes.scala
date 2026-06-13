@@ -10,6 +10,9 @@ final class StaticRoutes:
     case request @ GET -> Root =>
       StaticFile.fromResource("/public/index.html", Some(request)).getOrElseF(NotFound())
 
+    case request @ GET -> Root / "docs" =>
+      StaticFile.fromResource("/public/docs.html", Some(request)).getOrElseF(NotFound())
+
     case request @ GET -> Root / "app.js" =>
       StaticFile.fromResource("/public/app.js", Some(request)).getOrElseF(NotFound())
 

@@ -10,7 +10,6 @@ final case class Membership(
 ) derives Codec.AsObject
 
 final case class CreateMembershipRequest(
-    membershipNumber: String,
     name: String,
     role: MembershipRole,
     status: MembershipStatus = MembershipStatus.Active

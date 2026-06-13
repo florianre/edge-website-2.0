@@ -201,12 +201,9 @@ components:
     CreateMembershipRequest:
       type: object
       required:
-        - membershipNumber
         - name
         - role
       properties:
-        membershipNumber:
-          type: string
         name:
           type: string
         role:

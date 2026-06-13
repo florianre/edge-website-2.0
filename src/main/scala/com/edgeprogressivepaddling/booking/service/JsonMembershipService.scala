@@ -40,17 +40,15 @@ final class JsonMembershipService private (
       case Left(error) => IO.pure(Left(error))
       case Right(validRequest) =>
         mutate { current =>
+          val nextMembershipNumber = allocateMembershipNumber(current)
           val newMembership = Membership(
-            membershipNumber = sanitizeMembershipNumber(validRequest.membershipNumber),
+            membershipNumber = nextMembershipNumber,
             name = sanitizeName(validRequest.name),
             role = validRequest.role,
             status = validRequest.status
           )
 
-          if current.exists(_.membershipNumber == newMembership.membershipNumber) then
-            Left(DuplicateMembershipNumber(newMembership.membershipNumber))
-          else
-            Right((current :+ newMembership, newMembership))
+          Right((current :+ newMembership, newMembership))
         }
 
   override def update(
@@ -118,6 +116,16 @@ final class JsonMembershipService private (
 
     membershipNumberMatches && nameMatches && roleMatches && statusMatches
 
+  // Membership numbers are now generated from the current persisted state so the UI does not
+  // need to coordinate manual ID entry. Non-numeric IDs are ignored when calculating the next value.
+  private def allocateMembershipNumber(current: Vector[Membership]): String =
+    current
+      .flatMap(_.membershipNumber.toIntOption)
+      .maxOption
+      .map(_ + 1)
+      .getOrElse(1)
+      .toString
+
   private def mutate[A](
       transform: Vector[Membership] => Either[MembershipError, (Vector[Membership], A)]
   ): IO[Either[MembershipError, A]] =
@@ -152,10 +160,8 @@ final class JsonMembershipService private (
       request: CreateMembershipRequest
   ): Either[MembershipError, CreateMembershipRequest] =
     for
-      membershipNumber <- requireNonEmpty(request.membershipNumber, "membershipNumber")
       name <- requireNonEmpty(request.name, "name")
     yield request.copy(
-      membershipNumber = membershipNumber,
       name = name
     )
 
