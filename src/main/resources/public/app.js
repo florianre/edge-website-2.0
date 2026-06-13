@@ -27,6 +27,12 @@ const escapeHtml = (value) =>
     .replaceAll("'", "&#39;");
 
 const renderMemberships = () => {
+  if (!Array.isArray(memberships)) {
+    setStatus("Membership state could not be rendered.", "error");
+    membershipTableBody.innerHTML = "";
+    return;
+  }
+
   if (memberships.length === 0) {
     membershipTableBody.innerHTML = `
       <tr>
@@ -69,7 +75,12 @@ const fetchMemberships = async () => {
     throw new Error("Failed to load memberships.");
   }
 
-  memberships = await response.json();
+  const payload = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new Error("Membership list response was not an array.");
+  }
+
+  memberships = payload;
   renderMemberships();
 };
 
@@ -107,6 +118,35 @@ const resetEditForm = () => {
   editRoleInput.value = "member";
 };
 
+const upsertMembership = (membership) => {
+  const index = memberships.findIndex(
+    (candidate) => candidate.membershipNumber === membership.membershipNumber
+  );
+
+  if (index === -1) {
+    memberships = [...memberships, membership].sort((left, right) =>
+      left.membershipNumber.localeCompare(right.membershipNumber, undefined, {
+        numeric: true,
+      })
+    );
+  } else {
+    memberships = memberships.map((candidate) =>
+      candidate.membershipNumber === membership.membershipNumber
+        ? membership
+        : candidate
+    );
+  }
+
+  renderMemberships();
+};
+
+const removeMembership = (membershipNumber) => {
+  memberships = memberships.filter(
+    (candidate) => candidate.membershipNumber !== membershipNumber
+  );
+  renderMemberships();
+};
+
 const fillEditForm = (membershipNumber) => {
   const membership = memberships.find(
     (candidate) => candidate.membershipNumber === membershipNumber
@@ -128,22 +168,24 @@ const handleCreate = async (event) => {
   event.preventDefault();
 
   const payload = {
-    membershipNumber: createForm.membershipNumber.value,
     name: createForm.name.value,
     role: createForm.role.value,
     status: createForm.status.value,
   };
 
   try {
-    await requestJson(apiBase, {
+    const createdMembership = await requestJson(apiBase, {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    upsertMembership(createdMembership);
     createForm.reset();
     createForm.role.value = "member";
     createForm.status.value = "active";
-    await fetchMemberships();
-    setStatus(`Created membership ${payload.membershipNumber}.`, "success");
+    setStatus(
+      `Created membership ${createdMembership.membershipNumber}.`,
+      "success"
+    );
   } catch (error) {
     setStatus(error.message, "error");
   }
@@ -164,11 +206,11 @@ const handleEdit = async (event) => {
   };
 
   try {
-    await requestJson(`${apiBase}/${membershipNumber}`, {
+    const updatedMembership = await requestJson(`${apiBase}/${membershipNumber}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
-    await fetchMemberships();
+    upsertMembership(updatedMembership);
     setStatus(`Updated membership ${membershipNumber}.`, "success");
   } catch (error) {
     setStatus(error.message, "error");
@@ -208,7 +250,7 @@ const handleTableAction = async (event) => {
       if (editMembershipNumberInput.value === membershipNumber) {
         resetEditForm();
       }
-      await fetchMemberships();
+      removeMembership(membershipNumber);
       setStatus(`Deleted membership ${membershipNumber}.`, "success");
       return;
     }
@@ -218,10 +260,10 @@ const handleTableAction = async (event) => {
         ? `${apiBase}/${membershipNumber}/activate`
         : `${apiBase}/${membershipNumber}/deactivate`;
 
-    await requestJson(endpoint, {
+    const updatedMembership = await requestJson(endpoint, {
       method: "PATCH",
     });
-    await fetchMemberships();
+    upsertMembership(updatedMembership);
     setStatus(
       `${action === "activate" ? "Activated" : "Deactivated"} membership ${membershipNumber}.`,
       "success"

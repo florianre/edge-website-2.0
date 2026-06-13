@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edge Website API Docs</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"
+    />
+    <style>
+      html {
+        box-sizing: border-box;
+        overflow-y: scroll;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #f4efe6 0%, #f8fbfb 100%);
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+      }
+
+      .docs-shell {
+        min-height: 100vh;
+        padding: 1.5rem;
+      }
+
+      .docs-header {
+        width: min(1180px, 100%);
+        margin: 0 auto 1rem;
+        padding: 1.5rem 1.75rem;
+        border-radius: 24px;
+        background: rgba(255, 250, 243, 0.9);
+        box-shadow: 0 20px 60px rgba(39, 31, 22, 0.12);
+      }
+
+      .docs-header p {
+        margin: 0 0 0.5rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        color: #6f7a81;
+      }
+
+      .docs-header h1 {
+        margin: 0;
+        font-family: "Iowan Old Style", "Georgia", serif;
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 1;
+        color: #1f2a33;
+      }
+
+      .docs-header a {
+        color: #0f766e;
+      }
+
+      #swagger-ui {
+        width: min(1180px, 100%);
+        margin: 0 auto;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 24px 70px rgba(39, 31, 22, 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="docs-shell">
+      <header class="docs-header">
+        <p>Edge Progressive Paddling</p>
+        <h1>Membership API Documentation</h1>
+        <p>
+          Backed by <a href="/openapi.yaml">/openapi.yaml</a>.
+        </p>
+      </header>
+      <div id="swagger-ui"></div>
+    </div>
+
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: "/openapi.yaml",
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        docExpansion: "list",
+        displayRequestDuration: true,
+      });
+    </script>
+  </body>
+</html>

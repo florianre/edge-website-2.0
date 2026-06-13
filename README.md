@@ -17,7 +17,7 @@ Implemented membership operations:
 - View all memberships
 - Filter memberships by optional query parameters
 - View a single membership by membership number
-- Create a membership
+- Create a membership with an auto-generated membership number
 - Update a member's name and role
 - Activate a membership
 - Deactivate a membership
@@ -69,7 +69,8 @@ By default the app starts on:
 Once the app is running:
 
 - Open `http://localhost:8080` in a browser to use the dummy membership UI
-- Open `http://localhost:8080/openapi.yaml` to view the current OpenAPI spec
+- Open `http://localhost:8080/docs` to browse the Swagger UI
+- Open `http://localhost:8080/openapi.yaml` to view the raw OpenAPI spec
 - Use the create form to add a member
 - Use the table actions to edit, activate, deactivate, or delete members
 - Refreshing the page will reflect the current contents of `data/membership.json`
