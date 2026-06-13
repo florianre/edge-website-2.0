@@ -1,0 +1,117 @@
+﻿Booking System — Concept Brief Edge Progressive Paddling
+________________
+
+
+1. Purpose
+A members-only booking system embedded in the Edge website, allowing members to sign up to club sessions and trips. Coaches create and manage sessions; committee members have full admin control. All user types can book onto sessions and trips as participants.
+________________
+
+
+2. User Roles
+Role
+	Who
+	Permissions
+	Committee
+	Committee members
+	All coach permissions, plus access to membership management area (see Section 4)
+	Coach
+	13 coaches
+	Create, edit and cancel sessions and trips; view attendee lists; mark trip payments as sent or received; view membership list
+	Member
+	Standard members
+	Browse and book sessions/trips; cancel own bookings; mark own trip payment as sent
+	All three roles sign up to sessions and trips as a standard participant.
+
+
+________________
+
+
+3. Authentication
+* Every user enters their unique membership number in the event modal to identify themselves — no separate login, no cookies, no account creation
+* The membership number is looked up against a JSON file; if found and active, the user proceeds as themselves with permissions matching their role
+* The membership management area requires an additional shared committee password on top of the membership number — the only point of extra friction, keeping everyday use fast for everyone
+* Membership numbers are low-security credentials; the worst a bad actor can do is sign up to a paddle under someone else's name
+________________
+
+
+4. Membership File
+Stored as JSON (or equivalent). Each entry contains:
+* Membership number
+* Name
+* Role (member / coach / committee)
+* Status (active / inactive)
+Permissions by role:
+* Committee — full read/write access via the admin area (behind committee password)
+* Coaches — read-only view of the list including active/inactive status
+* Members — no access
+Actions available to committee in the admin area: add members, edit names, change roles, activate/deactivate members.
+________________
+
+
+5. Member-Facing Interface
+The main page has two tabs:
+* Upcoming — all future sessions and trips, ordered by date
+* Past — all previous sessions and trips, ordered by date
+Each event shows basic info (date, time, location, type). Clicking an event opens a modal where the user enters their membership number to identify themselves. Once entered, the modal shows full event details and the relevant actions for their role:
+* All users — sign up / remove themselves; view the names of all signed-up members; see how many spots remain
+* Coaches and committee — additionally see edit and cancel buttons for that event
+Coaches also see a "Create Event" button on the main events list, which opens a creation form without needing a separate login.
+The admin area is a separate login section for committee members (membership number plus committee password), used for membership file management.
+________________
+
+
+6. Sessions
+Creating a session (coach or committee):
+* Meet time
+* Meet location — dropdown: Canal / Kew Bridge (pre-selected default) / Other
+* Destination/direction — optional free text
+* End time
+* High/low tide — optional, hidden when Canal is selected
+* Max number of participants
+* Extra info — optional free text
+Member view of a session: All coach-entered fields, plus a standard footer message shown on every session (e.g. "Please wear shoes you don't mind getting wet…").
+Booking:
+* Member clicks to attend — their name (from the membership file) is recorded automatically
+* Option to add a short note at time of booking
+* Member can remove themselves from a session
+________________
+
+
+7. Trips
+Creating a trip (coach or committee):
+* Title
+* Date(s)
+* Max number of participants
+* Description — large free text field for all trip details
+Booking:
+* Member marks themselves as "Going" — name recorded automatically
+* Payment status tracked per person:
+* Payment sent — can be marked by the member themselves or by committee/coach
+* Payment received — committee and coach only
+________________
+
+
+8. Capacity & Full Sessions
+Each session and trip has a fixed participant cap set at creation. Once full:
+* New members see a "session is full" message directing them to the club WhatsApp community for updates
+* If a space opens up more than one hour before the session start time, an automated notification is sent to the club WhatsApp community
+* This notification fires each time a space becomes available (subject to the one-hour rule) — to be reviewed if it proves noisy in practice
+________________
+
+
+9. WhatsApp & Facebook Integration
+Sessions and trips are automatically posted to the club WhatsApp community and Facebook page. Both integrations post to existing accounts; the developer will need to obtain API access for each.
+Trigger rules:
+* Session or trip created — post immediately on creation
+* Session or trip edited — post only if meet time or meet location has changed
+* Session or trip cancelled — always post
+Optional coach note: when editing (time/location change) or cancelling, coaches are presented with an optional free text field. Any text entered is appended to the automated post to provide context (e.g. "moved to 10am due to tides" or "cancelled due to high winds").
+The automated post includes a direct link back to the session or trip on the booking system.
+________________
+
+
+10. Admin Controls
+* Manage the membership file (committee only, behind additional password)
+* Create, edit and cancel sessions and trips
+* View attendee list per session or trip
+* Mark trip payments as sent or received
