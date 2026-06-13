@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Edge Website 2.0 API
+  title: Edge Website API Documentation
   version: 0.2.0
   description: >
     Prototype API for the kayaking club website. It currently supports
@@ -8,9 +8,17 @@ info:
     and event plus booking management.
 servers:
   - url: http://localhost:8080
+tags:
+  - name: Auth
+    description: Session and committee-verification endpoints.
+  - name: Memberships
+    description: Membership search and committee-managed membership administration.
+  - name: Events
+    description: Event listing, event management, and booking workflows.
 paths:
   /api/auth/login:
     post:
+      tags: [Auth]
       summary: Log in with a membership number
       requestBody:
         required: true
@@ -29,6 +37,7 @@ paths:
           $ref: "#/components/responses/Error401"
   /api/auth/session:
     get:
+      tags: [Auth]
       summary: Get the current session
       responses:
         "200":
@@ -39,6 +48,7 @@ paths:
                 $ref: "#/components/schemas/SessionResponse"
   /api/auth/logout:
     post:
+      tags: [Auth]
       summary: Clear the current session
       responses:
         "200":
@@ -49,6 +59,7 @@ paths:
                 $ref: "#/components/schemas/SessionResponse"
   /api/auth/committee/verify:
     post:
+      tags: [Auth]
       summary: Unlock committee-only functionality
       requestBody:
         required: true
@@ -70,6 +81,7 @@ paths:
 
   /api/memberships:
     get:
+      tags: [Memberships]
       summary: List or filter memberships
       parameters:
         - in: query
@@ -110,6 +122,7 @@ paths:
         "403":
           $ref: "#/components/responses/Error403"
     post:
+      tags: [Memberships]
       summary: Create a membership
       requestBody:
         required: true
@@ -134,6 +147,7 @@ paths:
           $ref: "#/components/responses/Error409"
   /api/memberships/{membershipNumber}:
     get:
+      tags: [Memberships]
       summary: Fetch a membership by ID
       parameters:
         - $ref: "#/components/parameters/MembershipNumber"
@@ -151,6 +165,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error404"
     put:
+      tags: [Memberships]
       summary: Update name and role for a membership
       parameters:
         - $ref: "#/components/parameters/MembershipNumber"
@@ -176,6 +191,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error404"
     delete:
+      tags: [Memberships]
       summary: Delete a membership
       parameters:
         - $ref: "#/components/parameters/MembershipNumber"
@@ -190,6 +206,7 @@ paths:
           $ref: "#/components/responses/Error404"
   /api/memberships/{membershipNumber}/activate:
     patch:
+      tags: [Memberships]
       summary: Activate a membership
       parameters:
         - $ref: "#/components/parameters/MembershipNumber"
@@ -208,6 +225,7 @@ paths:
           $ref: "#/components/responses/Error404"
   /api/memberships/{membershipNumber}/deactivate:
     patch:
+      tags: [Memberships]
       summary: Deactivate a membership
       parameters:
         - $ref: "#/components/parameters/MembershipNumber"
@@ -227,6 +245,7 @@ paths:
 
   /api/events:
     get:
+      tags: [Events]
       summary: List events by scope
       parameters:
         - in: query
@@ -247,6 +266,7 @@ paths:
                   $ref: "#/components/schemas/Event"
   /api/events/{id}:
     get:
+      tags: [Events]
       summary: Fetch an event with attendee and booking detail
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -260,6 +280,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error404"
     put:
+      tags: [Events]
       summary: Update an event
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -286,6 +307,7 @@ paths:
           $ref: "#/components/responses/Error404"
   /api/events/sessions:
     post:
+      tags: [Events]
       summary: Create a club session
       requestBody:
         required: true
@@ -308,6 +330,7 @@ paths:
           $ref: "#/components/responses/Error403"
   /api/events/trips:
     post:
+      tags: [Events]
       summary: Create a trip
       requestBody:
         required: true
@@ -330,6 +353,7 @@ paths:
           $ref: "#/components/responses/Error403"
   /api/events/{id}/cancel:
     patch:
+      tags: [Events]
       summary: Cancel an event
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -348,6 +372,7 @@ paths:
           $ref: "#/components/responses/Error404"
   /api/events/{id}/bookings:
     post:
+      tags: [Events]
       summary: Create or update the current user's booking
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -376,6 +401,7 @@ paths:
           $ref: "#/components/responses/Error409"
   /api/events/{id}/bookings/{membershipNumber}:
     delete:
+      tags: [Events]
       summary: Remove a booking
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -395,6 +421,7 @@ paths:
           $ref: "#/components/responses/Error404"
   /api/events/{id}/bookings/{membershipNumber}/payment-sent:
     patch:
+      tags: [Events]
       summary: Mark trip payment sent
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -420,6 +447,7 @@ paths:
           $ref: "#/components/responses/Error404"
   /api/events/{id}/bookings/{membershipNumber}/payment-received:
     patch:
+      tags: [Events]
       summary: Mark trip payment received
       parameters:
         - $ref: "#/components/parameters/EventId"
