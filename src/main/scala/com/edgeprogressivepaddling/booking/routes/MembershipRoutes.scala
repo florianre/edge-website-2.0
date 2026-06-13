@@ -1,8 +1,13 @@
 package com.edgeprogressivepaddling.booking.routes
 
 import cats.effect.IO
-import com.edgeprogressivepaddling.booking.domain.{CreateMembershipRequest, UpdateMembershipRequest}
-import com.edgeprogressivepaddling.booking.service.{MembershipError, MembershipService}
+import com.edgeprogressivepaddling.booking.domain.{
+  CreateMembershipRequest,
+  MembershipRole,
+  MembershipStatus,
+  UpdateMembershipRequest
+}
+import com.edgeprogressivepaddling.booking.service.{MembershipError, MembershipSearchCriteria, MembershipService}
 import org.http4s.HttpRoutes
 import org.http4s.circe.{CirceEntityCodec, jsonOf}
 import org.http4s.dsl.io.*
@@ -14,8 +19,11 @@ final class MembershipRoutes(service: MembershipService[IO]):
   given org.http4s.EntityDecoder[IO, UpdateMembershipRequest] = jsonOf[IO, UpdateMembershipRequest]
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
-    case GET -> Root / "memberships" =>
-      service.getAll.flatMap(Ok(_))
+    case request @ GET -> Root / "memberships" => {
+      buildSearchCriteria(request.params) match
+        case Left(error)     => BadRequest(errorBody(error))
+        case Right(criteria) => service.search(criteria).flatMap(Ok(_))
+    }
 
     case GET -> Root / "memberships" / membershipNumber =>
       service.getByMembershipNumber(membershipNumber).flatMap {
@@ -69,3 +77,31 @@ final class MembershipRoutes(service: MembershipService[IO]):
 
   private def errorBody(message: String): Map[String, String] =
     Map("error" -> message)
+
+  private def buildSearchCriteria(
+      params: Map[String, String]
+  ): Either[String, MembershipSearchCriteria] =
+    for
+      role <- parseOptionalRole(params.get("role"))
+      status <- parseOptionalStatus(params.get("status"))
+    yield MembershipSearchCriteria(
+      membershipNumber = sanitizeOptional(params.get("membershipNumber")),
+      name = sanitizeOptional(params.get("name")),
+      role = role,
+      status = status
+    )
+
+  private def parseOptionalRole(value: Option[String]): Either[String, Option[MembershipRole]] =
+    value match
+      case None => Right(None)
+      case Some(rawValue) =>
+        MembershipRole.fromString(rawValue).left.map(identity).map(Some(_))
+
+  private def parseOptionalStatus(value: Option[String]): Either[String, Option[MembershipStatus]] =
+    value match
+      case None => Right(None)
+      case Some(rawValue) =>
+        MembershipStatus.fromString(rawValue).left.map(identity).map(Some(_))
+
+  private def sanitizeOptional(value: Option[String]): Option[String] =
+    value.map(_.trim).filter(_.nonEmpty)

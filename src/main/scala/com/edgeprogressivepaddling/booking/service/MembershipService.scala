@@ -3,7 +3,7 @@ package com.edgeprogressivepaddling.booking.service
 import com.edgeprogressivepaddling.booking.domain.{CreateMembershipRequest, Membership, UpdateMembershipRequest}
 
 trait MembershipService[F[_]]:
-  def getAll: F[List[Membership]]
+  def search(criteria: MembershipSearchCriteria): F[List[Membership]]
   def getByMembershipNumber(membershipNumber: String): F[Option[Membership]]
   def create(request: CreateMembershipRequest): F[Either[MembershipError, Membership]]
   def update(membershipNumber: String, request: UpdateMembershipRequest): F[Either[MembershipError, Membership]]

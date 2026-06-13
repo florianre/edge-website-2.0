@@ -15,6 +15,7 @@ The app currently implements membership management only.
 Implemented membership operations:
 
 - View all memberships
+- Filter memberships by optional query parameters
 - View a single membership by membership number
 - Create a membership
 - Update a member's name and role
@@ -75,6 +76,8 @@ Once the app is running:
 ## API endpoints
 
 - `GET /api/memberships`
+- `GET /api/memberships?role=coach&status=active`
+- `GET /api/memberships?name=alex`
 - `GET /api/memberships/{membershipNumber}`
 - `POST /api/memberships`
 - `PUT /api/memberships/{membershipNumber}`

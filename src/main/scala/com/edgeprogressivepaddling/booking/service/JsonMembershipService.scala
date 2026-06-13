@@ -23,8 +23,12 @@ final class JsonMembershipService private (
     writeGuard: Semaphore[IO]
 ) extends MembershipService[IO]:
 
-  override def getAll: IO[List[Membership]] =
-    state.get.map(_.sortBy(_.membershipNumber).toList)
+  override def search(criteria: MembershipSearchCriteria): IO[List[Membership]] =
+    state.get.map(
+      _.filter(matches(criteria))
+        .sortBy(_.membershipNumber)
+        .toList
+    )
 
   override def getByMembershipNumber(membershipNumber: String): IO[Option[Membership]] =
     state.get.map(_.find(_.membershipNumber == sanitizeMembershipNumber(membershipNumber)))
@@ -97,6 +101,18 @@ final class JsonMembershipService private (
           val updated = current(index).copy(status = newStatus)
           Right((current.updated(index, updated), updated))
     }
+
+  private def matches(criteria: MembershipSearchCriteria)(membership: Membership): Boolean =
+    val membershipNumberMatches = criteria.membershipNumber.forall(value =>
+      membership.membershipNumber == sanitizeMembershipNumber(value)
+    )
+    val nameMatches = criteria.name.forall(value =>
+      membership.name.toLowerCase.contains(value.trim.toLowerCase)
+    )
+    val roleMatches = criteria.role.forall(_ == membership.role)
+    val statusMatches = criteria.status.forall(_ == membership.status)
+
+    membershipNumberMatches && nameMatches && roleMatches && statusMatches
 
   private def mutate[A](
       transform: Vector[Membership] => Either[MembershipError, (Vector[Membership], A)]
